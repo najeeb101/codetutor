@@ -793,3 +793,13 @@ whole container. The bomb is stopped either way, so I changed the test to expect
 real behaviour and wrote the difference down. Cost: about 100 ms per submission.
 *How I'd say it:* "Add a stronger wall, make it fail closed, test it where it really runs, and
 when a test differs, measure and document it instead of loosening the assertion."
+
+## Deploy Step 4: choose the model by a rule written before the run
+📌 The server has no GPU. I did not guess which model to run. I wrote the rule first ("the largest
+model with median hint time <= 20 s and teacher's hint shown <= 30%"), then measured 1.5B, 3B and
+7B on the CPU of arm64 and amd64 CI runners. No model passed, so the rule picked the 1.5B, even
+though I would have liked a bigger one. The guardrail plus the teacher's-hint fallback keeps a
+weak model safe: it can be slower or less helpful, not unsafe. I also say plainly that CI
+runners are not the real server and the fix-rate eval was not repeated.
+*How I'd say it:* "Write the decision rule before the measurement, so the result can't bend the
+rule. Make the weak option safe by design, and state what the benchmark did not measure."

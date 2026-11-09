@@ -147,3 +147,7 @@ Ideas that come up during a week but belong to a later week. Add them here inste
   fresh container (about 215 ms with runc, 315 ms with gVisor on a CI runner). A pool of idle,
   single-use containers would hide most of that. Firecracker microVMs are the next isolation level
   (a hardware boundary), at more setup cost.
+
+- **(Deploy Step 4) A hosted model option and a quality check of the CPU model.** A free hosted
+  API would be faster, but student code would leave the server. Also: repeat the Week 4 fix-rate
+  eval with the 1.5B as the *tutor* and see if its hints help; try a 1.5B with a shorter prompt.

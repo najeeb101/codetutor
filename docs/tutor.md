@@ -395,3 +395,41 @@ fixed" would move `teacher-2` by 0.2 / 54 ≈ 0.004.
 - The bank's hints, the buggy files, the course notes and this eval were all written by the
   same author (Claude). Hidden-only bugs are only one kind of situation; hints for code that
   fails visible tests are not measured here.
+
+## 6. The tutor in production: a model on the CPU (Deploy Step 4)
+
+The server has no GPU, so the hint model runs on the CPU in the stack's own Ollama container
+(`make prod-tutor-up`). Student code never leaves the server. A weak model is still *safe*: every
+hint passes the guardrail or is replaced by the teacher's hint. A small model costs helpfulness
+and speed, not safety.
+
+### 6.1 The rule (written before the run)
+Pick the **largest** model with a median hint time of at most **20 s** and a "teacher's hint
+shown" share of at most **30%**. If none passes, use the smallest (1.5B) and say so.
+(`tutor/cpu_bench.py`, `choose_model`.)
+
+### 6.2 What was measured
+`scripts/bench_tutor_cpu.py --hints 12`: the real `give_hint` pipeline, level 1, on 12 evenly
+spaced safety situations, in a CI job on GitHub's runners (4 vCPU). CI run 42688829799.
+
+| runner | model | median s | p90 s | first reply blocked | teacher's hint shown |
+|---|---|---|---|---|---|
+| arm64 (like Oracle's) | 1.5B | 25.1 | 38.6 | 58% | 0% |
+| arm64 | 3B | 29.7 | 33.0 | 0% | 0% |
+| arm64 | 7B | 55.4 | 63.9 | 0% | 0% |
+| amd64 | 1.5B | 29.1 | 42.9 | 67% | 0% |
+| amd64 | 3B | 33.5 | 40.3 | 0% | 0% |
+| amd64 | 7B | 78.1 | 88.6 | 0% | 0% |
+
+**Verdict: no model passes the 20 s limit, so the rule picks the 1.5B** (`TUTOR_MODEL` default
+`ollama/qwen2.5-coder:1.5b`). The 7B needs about 5.5 GB of RAM and about a minute per hint.
+
+### 6.3 Honest limits
+- These are CI runners, not the Oracle server; Step 5 re-runs the benchmark there.
+- The 1.5B's median is above the 20 s limit. The UI says a hint can take up to 2 minutes, and the
+  queue holds 1 waiting hint per user.
+- The 1.5B's first reply was blocked by the guardrail in 58-67% of the 12 situations (the 7B and 3B:
+  0%). Here the retry fixed all 12 (0% teacher's hint shown).  Week 4 measured 49% blocked at level 1 for the 1.5B on the laptop.
+- The 3B and 7B "first blocked 0%" may be luck on 12 hints. The "tokens/s" column of the raw
+  output is not used by the rule.
+- The Week 4 fix-rate eval was **not** repeated for this setup.

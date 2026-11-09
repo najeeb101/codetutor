@@ -139,3 +139,11 @@ echo "SANDBOX_RUNTIME=runsc" >> .env.prod
 - **Not on the laptop:** Docker Desktop's VM has no `runsc`; leave `SANDBOX_RUNTIME` empty there
   (plain Docker, fine for your own code, not for strangers').
 - **Step 5 must** run the install script on the server and set the variable.
+
+## 9. The AI tutor in the stack (Deploy Step 4)
+
+`make prod-tutor-up` starts Ollama (no published port), pulls `TUTOR_MODEL` and
+`nomic-embed-text` into a volume, embeds the course notes, and starts the tutor worker. The
+worker has no Docker socket. The model was chosen by a rule written before the measurement
+(docs/tutor.md §6): 1.5B on the CPU. `make prod-e2e-hints` runs the full 11 end-to-end checks
+with a real hint (a CPU hint takes 20-40 s). Needs about 2 GB of RAM for the 1.5B.

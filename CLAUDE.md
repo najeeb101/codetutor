@@ -634,6 +634,15 @@ Week 1 steps: 0 skeleton → 1 problem format (schema + loader + 3 examples) →
   CI now prevents (`make rl-data` first). **First CI run (42659497188) green, all 3 jobs:**
   `make all` 819 passed, 2 skipped, 1 xfailed (pytest 53 s), 33 valid, no generated-file diff;
   `make test-docker` 33 passed (25 s); `make web-check` compiled (27 s job). Wall time 1 min 23 s.
+- **Done (2026-11-09): Deploy Step 4** (tutor in production; plan approved). `tutor/cpu_bench.py` +
+  `scripts/bench_tutor_cpu.py` (12 situations, rule fixed before the run), CI job `tutor-cpu` (arm64 +
+  amd64), Ollama + `tutor-models` + `tutor-notes` + `tutor` in `compose.prod.yaml` (profiles `tutor`,
+  `tutor-data`), `make prod-tutor-up/down`, `prod-e2e-hints`, `settings.tutor_model()`, 7 tests.
+  **Measured (CI, run 42688829799):** 1.5B median 25.1 s arm64 / 29.1 s amd64, 3B 29.7 / 33.5, 7B 55.4 /
+  78.1; teacher's hint shown 0% everywhere; no model meets 20 s, so the rule picks the **1.5B**. CI
+  `containers` jobs (both CPUs) run the tutor + `prod-e2e-hints` green. First try failed: the
+  one-shot services needed both compose profiles (fixed). Not done: fix-rate eval of the 1.5B tutor;
+  Step 5 re-measures on Oracle.
 - **Done (2026-11-09): Deploy Step 3** (gVisor; plan approved). `DockerSandbox(runtime=)` +
   `docker_command(runtime=)`, fail-closed canary, `SANDBOX_RUNTIME` (settings, worker, compose
   worker + demo-grade), `deploy/install-gvisor.sh` (release 20261019.0, SHA-512 per arch, checked
@@ -824,8 +833,9 @@ Week 1 steps: 0 skeleton → 1 problem format (schema + loader + 3 examples) →
   `submissions`, not the table; Q3 why a module-level router shared between two app instances was a bug.
   Deploy Step 3: Q1 why `SANDBOX_RUNTIME` makes the worker refuse to start instead of falling back; Q2
   what a fork bomb does under runc and under gVisor; Q3 why the gVisor tests run on CI and not on the laptop.
-  (172 in total; answer key in Claude's memory.)
-- **Next action:** **Deploy Step 4** (the tutor in production: a model that runs without a GPU, chosen by measurement; plan first). Najeeb: Oracle Cloud sign-up in parallel. Najeeb: Oracle Cloud sign-up in parallel. Earlier: the project code is done (Week 8 wrap-up committed). For Najeeb: record the demo
+  Deploy Step 4: Q1 why the model size was chosen by a rule written before the benchmark; Q2 why a weak 1.5B model is still safe to show to students; Q3 why the CI numbers are not the final word for the Oracle server.
+  (175 in total; answer key in Claude's memory.)
+- **Next action:** **Deploy Step 5** (server: Oracle Cloud Always Free ARM, Caddy HTTPS, DuckDNS, backups, uptime check; run `deploy/install-gvisor.sh`, `SANDBOX_RUNTIME=runsc`, test a spoofed X-Forwarded-For, re-run the tutor benchmark; plan first). Najeeb: needs an Oracle Cloud account. Earlier: the project code is done (Week 8 wrap-up committed). For Najeeb: record the demo
   video with `docs/demo-script.md`; write `docs/notes/week1-8.md` texts ("review" when ready: weeks 1-8);
   answer the check questions; the two open TODOs (`compareValues`, rank-formula AUC test); review the
   8 course notes. Optional: DPO on hint ratings, browser checks of the dashboard once WSL can start
