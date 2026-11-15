@@ -42,9 +42,10 @@ interface Props {
   problem: Problem;
   code: string; // the editor's code
   graded: Submission | null; // the shown submission, when the editor holds exactly its code
+  aiTutor: boolean; // false: TUTOR_MODE=teacher, every hint is the teacher's own (no model)
 }
 
-export function HintPanel({ problem, code, graded }: Props) {
+export function HintPanel({ problem, code, graded, aiTutor }: Props) {
   const { user, forget } = useUser();
   const [hints, setHints] = useState<Hint[]>([]);
   const [question, setQuestion] = useState("");
@@ -159,24 +160,33 @@ export function HintPanel({ problem, code, graded }: Props) {
         <p className="muted">Start as a guest (top right) to ask for a hint.</p>
       ) : (
         <>
-          <p className="muted">
-            The tutor gives hints, not answers. It looks at{" "}
-            {graded ? `your submission #${graded.id} and its test results` : "the code in the editor (not tested yet)"}.
-          </p>
-          <p className="muted">
-            Hints are made by a small AI model running on this server. Your code is not sent to
-            any other service.
-          </p>
-          <label className="question">
-            Your question (optional)
-            <textarea
-              value={question}
-              onChange={(event) => setQuestion(event.target.value)}
-              maxLength={MAX_QUESTION_CHARS}
-              rows={2}
-              placeholder="e.g. Why does my loop stop too early?"
-            />
-          </label>
+          {aiTutor ? (
+            <>
+              <p className="muted">
+                The tutor gives hints, not answers. It looks at{" "}
+                {graded ? `your submission #${graded.id} and its test results` : "the code in the editor (not tested yet)"}.
+              </p>
+              <p className="muted">
+                Hints are made by a small AI model running on this server. Your code is not sent to
+                any other service.
+              </p>
+              <label className="question">
+                Your question (optional)
+                <textarea
+                  value={question}
+                  onChange={(event) => setQuestion(event.target.value)}
+                  maxLength={MAX_QUESTION_CHARS}
+                  rows={2}
+                  placeholder="e.g. Why does my loop stop too early?"
+                />
+              </label>
+            </>
+          ) : (
+            <p className="muted">
+              The AI tutor is off in this demo. You get your teacher&apos;s hints for this problem,
+              one step at a time; they don&apos;t look at your code.
+            </p>
+          )}
           <div className="actions">
             <button type="button" onClick={() => ask(nextLevel)} disabled={waiting}>
               {nextLevel === 1 ? "Get a hint" : "Get a more specific hint"}

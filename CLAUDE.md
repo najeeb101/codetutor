@@ -835,6 +835,14 @@ Week 1 steps: 0 skeleton → 1 problem format (schema + loader + 3 examples) →
   what a fork bomb does under runc and under gVisor; Q3 why the gVisor tests run on CI and not on the laptop.
   Deploy Step 4: Q1 why the model size was chosen by a rule written before the benchmark; Q2 why a weak 1.5B model is still safe to show to students; Q3 why the CI numbers are not the final word for the Oracle server.
   (175 in total; answer key in Claude's memory.)
+- **Done (2026-11-15): launch with teacher hints only** (Najeeb chose option C). `TUTOR_MODE`
+  (`ai` default, `teacher`): the tutor worker loads no model and answers with the level's own
+  hint (`teacher_hint`, source `reference`); compose runs it by default without Ollama
+  (`depends_on ... required: false`), the web says "The AI tutor is off in this demo";
+  `make prod-tutor-up` / `prod-tutor-down` switch. 6 new tests; `make all` 911 passed (69 s);
+  `make prod-e2e` 11/11 and `make prod-web-e2e` 9/9 with hints on (hint 1.1 s). docs/deploy.md §9.
+  History note: on 2026-11-15 the Claude co-author lines were removed from every commit
+  (force-push), so commit hashes quoted above no longer match the repository.
 - **Next action:** **Deploy Step 5** (server: Oracle Cloud Always Free ARM, Caddy HTTPS, DuckDNS, backups, uptime check; run `deploy/install-gvisor.sh`, `SANDBOX_RUNTIME=runsc`, test a spoofed X-Forwarded-For, re-run the tutor benchmark; plan first). Najeeb: needs an Oracle Cloud account. Earlier: the project code is done (Week 8 wrap-up committed). For Najeeb: record the demo
   video with `docs/demo-script.md`; write `docs/notes/week1-8.md` texts ("review" when ready: weeks 1-8);
   answer the check questions; the two open TODOs (`compareValues`, rank-formula AUC test); review the

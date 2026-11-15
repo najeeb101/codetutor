@@ -33,7 +33,7 @@ from codetutor.tutor.jobs import (
     release_hint,
     save_hint_result,
 )
-from codetutor.tutor.service import TutorConfig, give_hint
+from codetutor.tutor.service import TutorConfig, give_hint, teacher_hint
 from codetutor.worker.jobs import load_grade_result
 from codetutor.worker.loop import (
     ERROR_PAUSE_S,
@@ -55,7 +55,7 @@ log = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class Tutor:
-    """What the worker makes hints with. `model` None: always the teacher's hint."""
+    """What the worker makes hints with. `model` None: the teacher's hint, no note search."""
 
     model: ChatModel | None
     embedder: Embedder | None = None
@@ -86,16 +86,19 @@ def process_hint_job(engine: Engine, tutor: Tutor, job: HintJob, cache: ProblemC
             result=result,
             earlier_hints=earlier,
         )
-        # Autocommit: the search's reads don't keep a transaction open during the model call.
-        reader = engine.execution_options(isolation_level="AUTOCOMMIT")
-        with Session(reader) as session:
-            hint = give_hint(
-                request,
-                model=tutor.model,
-                session=session,
-                embedder=tutor.embedder,
-                config=tutor.config,
-            )
+        if tutor.model is None:
+            hint = teacher_hint(request, config=tutor.config)
+        else:
+            # Autocommit: the search's reads don't keep a transaction open during the model call.
+            reader = engine.execution_options(isolation_level="AUTOCOMMIT")
+            with Session(reader) as session:
+                hint = give_hint(
+                    request,
+                    model=tutor.model,
+                    session=session,
+                    embedder=tutor.embedder,
+                    config=tutor.config,
+                )
         with Session(engine) as session, session.begin():
             saved = save_hint_result(session, job, hint)
     except Exception as exc:  # a worker must survive any single job; the error is kept

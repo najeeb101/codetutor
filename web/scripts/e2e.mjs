@@ -219,7 +219,8 @@ function steps(page) {
     }],
     ...(HINTS ? [["ask the tutor about it, then rate the hint", async () => {
       const about = await page.js("document.querySelector('.hints')?.textContent ?? ''");
-      expect(about.includes("your submission #"), "the hint panel is not about the graded submission");
+      // AI mode: the panel names the graded submission. TUTOR_MODE=teacher: it says the AI is off.
+      expect(about.includes("your submission #") || about.includes("The AI tutor is off"), "the hint panel is not about the graded submission");
       await page.js("[...document.querySelectorAll('.hints button')].find((b) => b.textContent === 'Get a hint').click()");
       const text = await waitFor(() => page.js("document.querySelector('.hint .hint-text')?.textContent"), "the hint (is `make tutor` running?)", 150_000);
       const label = await page.js("document.querySelector('.hint p.muted').textContent");

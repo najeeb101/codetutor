@@ -81,7 +81,7 @@ user-space kernel (section 8).
 | The visitor's IP behind the proxies | **Open until Step 5:** Next.js passes a visitor's own `X-Forwarded-For` through (measured), so `TRUSTED_PROXY_HOPS=1` is right only behind Caddy replacing that header. Step 5 must test it with a spoofed header |
 | The instructor token is one shared secret | **Public demo done (2c):** a separate read-only API on a simulation database, no token needed because no real person is in it. The real teacher routes keep the shared token: fine for one private owner, not for several teachers |
 | Grading containers share the host kernel | **Done (3):** gVisor (`SANDBOX_RUNTIME=runsc`, section 8); proven in CI on amd64 and arm64. The server must set it (Step 5) |
-| No tutor model on the server | Step 4 |
+| No tutor model on the server | **Launch choice (2026-11-15):** teacher hints only (`TUTOR_MODE=teacher`, section 9), and the UI says so. The AI tutor is one command away (`make prod-tutor-up`) |
 | No HTTPS, no server, no backups | Step 5 |
 
 ## 6. Known limits
@@ -147,3 +147,22 @@ echo "SANDBOX_RUNTIME=runsc" >> .env.prod
 worker has no Docker socket. The model was chosen by a rule written before the measurement
 (docs/tutor.md §6): 1.5B on the CPU. `make prod-e2e-hints` runs the full 11 end-to-end checks
 with a real hint (a CPU hint takes 20-40 s). Needs about 2 GB of RAM for the 1.5B.
+
+### Teacher hints only (the launch setting)
+
+Without the AI tutor, the default stack (`make prod-up`) still answers hints: the `tutor`
+worker runs with `TUTOR_MODE=teacher`, loads no model and needs no Ollama, and answers each
+request with the problem's own hint for that level (saved as `source = reference`; no note
+search, no model attempts in the trace). The web container gets the same `TUTOR_MODE`, so the
+hint panel says "The AI tutor is off in this demo" and hides the question box (a teacher's hint
+can't answer a question). Measured on the laptop 2026-11-15: a hint in 1.1 s, `make prod-e2e`
+11/11 and `make prod-web-e2e` 9/9 with the hint steps on.
+
+| Command | Hints |
+|---|---|
+| `make prod-up` | the teacher's (`TUTOR_MODE=teacher`, the compose default) |
+| `make prod-tutor-up` | the AI tutor's (recreates `tutor` and `web` with `TUTOR_MODE=ai`) |
+| `make prod-tutor-down` | back to the teacher's (Ollama stopped, its models kept) |
+
+Leave `TUTOR_MODE` out of `.env.prod`: these targets choose it, so the worker and the UI can't
+disagree. A value other than `ai` or `teacher` stops the worker at start (`settings.tutor_mode`).

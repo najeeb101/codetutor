@@ -8,6 +8,9 @@ Usage:
 It loads the model and the embedder at start and keeps them loaded while it runs (Ollama
 unloads them by itself 10 minutes after it stops). It stops at once if the model can't be
 reached: running without it would give only the teacher's hints, silently (docs/tutor.md §4).
+
+With TUTOR_MODE=teacher it loads no model at all and answers every request with the teacher's
+hint for its level, on purpose and openly: the web UI says so too (docs/deploy.md §9).
 """
 
 from __future__ import annotations
@@ -16,12 +19,13 @@ import argparse
 import logging
 import threading
 import time
+from collections.abc import Callable
 
 from sqlalchemy.exc import OperationalError
 
 from codetutor.db.engine import make_engine
 from codetutor.evals.clients import ModelError, make_client, make_embedder
-from codetutor.settings import tutor_model
+from codetutor.settings import tutor_mode, tutor_model
 from codetutor.tutor.loop import Tutor, run_tutor_worker
 from codetutor.tutor.notes import DEFAULT_EMBEDDER
 from codetutor.tutor.service import TutorConfig
@@ -40,6 +44,9 @@ def main() -> int:
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
+    if tutor_mode() == "teacher":
+        log.info("TUTOR_MODE=teacher: no model, every hint is the teacher's own")
+        return _run(Tutor(None), drain=args.drain, keep_loaded=None)
     if not args.model.startswith("ollama/"):
         log.error("the tutor worker needs a local model: --model ollama/<model>")
         return 1
@@ -57,14 +64,18 @@ def main() -> int:
         log.error("%s\nIs Ollama running, with the model pulled? (docs/tutor.md §4)", exc)
         return 1
     log.info("%s and %s loaded in %.1f s", model.name, embedder.name, time.perf_counter() - start)
+    tutor = Tutor(model, embedder, TutorConfig(model=args.model))
+    return _run(tutor, drain=args.drain, keep_loaded=keep_loaded)
 
+
+def _run(tutor: Tutor, *, drain: bool, keep_loaded: Callable[[], None] | None) -> int:
+    """Answer hint jobs until stopped; returns the exit code."""
     stop = threading.Event()
     install_stop_handlers(stop)
     engine = make_engine()
-    tutor = Tutor(model, embedder, TutorConfig(model=args.model))
     log.info("tutor worker started (%s)", engine.url.render_as_string(hide_password=True))
     try:
-        stats = run_tutor_worker(engine, tutor, stop, drain=args.drain, keep_loaded=keep_loaded)
+        stats = run_tutor_worker(engine, tutor, stop, drain=drain, keep_loaded=keep_loaded)
     except WorkerStoppedError as exc:
         log.error("%s", exc)
         return 2

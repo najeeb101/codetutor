@@ -39,7 +39,7 @@ function gradedFor(current: Submission | null, code: string, problem: Problem): 
   return current;
 }
 
-export function Workspace({ problem }: { problem: Problem }) {
+export function Workspace({ problem, aiTutor }: { problem: Problem; aiTutor: boolean }) {
   const { user, forget } = useUser();
   const [code, setCode] = useState(problem.starter_code);
   const [sending, setSending] = useState(false);
@@ -188,7 +188,12 @@ export function Workspace({ problem }: { problem: Problem }) {
         </p>
       )}
       {current && <ResultView submission={current} functionName={problem.function_name} />}
-      <HintPanel problem={problem} code={code} graded={gradedFor(current, code, problem)} />
+      <HintPanel
+        problem={problem}
+        code={code}
+        graded={gradedFor(current, code, problem)}
+        aiTutor={aiTutor}
+      />
 
       {history.length > 0 && (
         <>

@@ -15,6 +15,8 @@ INSTRUCTOR_TOKEN_ENV = "INSTRUCTOR_TOKEN"
 SANDBOX_IMAGE_ENV = "SANDBOX_IMAGE"
 SANDBOX_RUNTIME_ENV = "SANDBOX_RUNTIME"
 TUTOR_MODEL_ENV = "TUTOR_MODEL"
+TUTOR_MODE_ENV = "TUTOR_MODE"
+TUTOR_MODES = ("ai", "teacher")
 DEV_LOGIN_ENV = "CODETUTOR_DEV_LOGIN"
 TRUSTED_PROXY_HOPS_ENV = "TRUSTED_PROXY_HOPS"
 API_DB_PASSWORD_ENV = "API_DB_PASSWORD"
@@ -128,3 +130,15 @@ def tutor_model() -> str:
     from codetutor.tutor.service import TutorConfig  # here, so settings stays import-light
 
     return os.environ.get(TUTOR_MODEL_ENV) or TutorConfig().model
+
+
+def tutor_mode() -> str:
+    """How hints are made: "ai" (the model, the default) or "teacher" (the problem's own hints).
+
+    "teacher" is for a server without a model (docs/deploy.md §9): every hint is the teacher's
+    hint for its level, at once, and the web UI says so. Anything else is a mistake and raises.
+    """
+    value = os.environ.get(TUTOR_MODE_ENV) or "ai"
+    if value not in TUTOR_MODES:
+        raise ValueError(f"{TUTOR_MODE_ENV} must be one of {', '.join(TUTOR_MODES)}, not {value!r}")
+    return value

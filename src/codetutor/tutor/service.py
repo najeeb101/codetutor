@@ -140,6 +140,17 @@ def give_hint(
     )
 
 
+def teacher_hint(request: HintRequest, *, config: TutorConfig | None = None) -> HintResult:
+    """The teacher's own hint for the request's level: no model, no note search.
+
+    For a server without a model (settings.tutor_mode() == "teacher"). Saved as a reference
+    hint, not a fallback: no model was asked, so none failed.
+    """
+    config = config or TutorConfig()
+    text = request.problem.hints[request.level - 1]
+    return HintResult(text, HintSource.REFERENCE, request.level, None, None, asdict(config))
+
+
 def save_hint(
     session: Session,
     request: HintRequest,

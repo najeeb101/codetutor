@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { InlineCode } from "@/components/InlineCode";
 import { Workspace } from "@/components/Workspace";
 import { ApiError, apiFetch } from "@/lib/api";
+import { aiTutorOn } from "@/lib/config";
 import { parseDescription } from "@/lib/description";
 import type { CompareMode, Problem } from "@/lib/types";
 
@@ -99,7 +100,7 @@ export default async function ProblemPage({ params }: { params: Promise<{ id: st
           {problem.check_input_unchanged && " Your function must not change its input."}
         </p>
       </section>
-      <Workspace problem={problem} />
+      <Workspace problem={problem} aiTutor={aiTutorOn()} />
     </div>
   );
 }

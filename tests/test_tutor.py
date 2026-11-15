@@ -16,6 +16,7 @@ from codetutor.evals.clients import ModelUnavailableError
 from codetutor.evals.records import ModelReply
 from codetutor.grader.models import GradeResult, TestResult
 from codetutor.problems import Problem
+from codetutor.settings import tutor_mode
 from codetutor.tutor.context import (
     MAX_CODE_CHARS,
     HintRequest,
@@ -32,7 +33,13 @@ from codetutor.tutor.prompt import (
     build_user_prompt,
 )
 from codetutor.tutor.rag import Hit
-from codetutor.tutor.service import MAX_PROMPT_TOKENS, TutorConfig, give_hint, save_hint
+from codetutor.tutor.service import (
+    MAX_PROMPT_TOKENS,
+    TutorConfig,
+    give_hint,
+    save_hint,
+    teacher_hint,
+)
 from conftest import BUGGY, HashingEmbedder, ScriptedModel, valid_problem_data
 
 GOOD = "Try your function with n = 10 by hand: which even numbers does your loop really add?"
@@ -292,6 +299,32 @@ def test_level_3_is_the_reference_hint_without_a_model_call(problem: Problem) ->
 def test_without_a_model_the_reference_hint_is_shown(problem: Problem) -> None:
     result = give_hint(_request(problem, 2), model=None)
     assert (result.source, result.text, result.attempts) == (HintSource.FALLBACK, "Hint two.", ())
+
+
+@pytest.mark.parametrize(
+    ("level", "text"), [(1, "Hint one."), (2, "Hint two."), (3, "Hint three.")]
+)
+def test_teacher_mode_gives_the_teachers_hint_for_each_level(
+    problem: Problem, level: int, text: str
+) -> None:
+    result = teacher_hint(_request(problem, level))
+    assert (result.source, result.text, result.level) == (HintSource.REFERENCE, text, level)
+    assert (result.model, result.attempts, result.retrieved, result.search_query) == (
+        None,
+        (),
+        (),
+        None,
+    )
+
+
+def test_tutor_mode_is_ai_unless_set_to_teacher(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("TUTOR_MODE", raising=False)
+    assert tutor_mode() == "ai"
+    monkeypatch.setenv("TUTOR_MODE", "teacher")
+    assert tutor_mode() == "teacher"
+    monkeypatch.setenv("TUTOR_MODE", "off")  # a typo must not quietly pick a mode
+    with pytest.raises(ValueError, match="TUTOR_MODE must be one of ai, teacher"):
+        tutor_mode()
 
 
 def test_quoting_the_students_own_line_is_allowed(problem: Problem) -> None:

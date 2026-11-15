@@ -123,6 +123,20 @@ def test_level_3_is_the_teachers_last_hint_without_a_model_call(
     assert (row.text, row.source, row.model, model.calls) == ("Hint three.", "reference", None, [])
 
 
+@pytest.mark.parametrize(("level", "text"), [(1, "Hint one."), (2, "Hint two.")])
+def test_teacher_mode_answers_with_the_teachers_hint_and_no_search(
+    db_engine: Engine, db_session: Session, user_id: int, level: int, text: str
+) -> None:
+    hint_ids = [_ask(db_session, user_id, level=1)]
+    if level == 2:
+        assert process_hint_job(db_engine, Tutor(None), _claim(db_engine), {}) is Outcome.DONE
+        hint_ids.append(_ask(db_session, user_id, level=2))
+    assert process_hint_job(db_engine, Tutor(None), _claim(db_engine), {}) is Outcome.DONE
+    row = _row(db_session, hint_ids[-1])
+    assert (row.job_status, row.text, row.source, row.model) == ("done", text, "reference", None)
+    assert (row.attempts, row.retrieved, row.search_query) == ([], [], None)
+
+
 def test_a_model_that_is_down_still_gives_the_teachers_hint(
     db_engine: Engine, db_session: Session, user_id: int
 ) -> None:

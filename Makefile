@@ -210,12 +210,12 @@ prod-ps: prod-env  ## show the containers and their health
 prod-logs: prod-env  ## follow the logs of every container (Ctrl+C stops following)
 	$(PROD) logs -f --tail 100
 
-prod-e2e:  ## end-to-end checks against the containerized app (no tutor yet: --skip-hints)
+prod-e2e:  ## end-to-end checks against the containerized app (incl. a hint: the teacher's, or the AI's after prod-tutor-up)
 	uv run python scripts/e2e_check.py --api http://127.0.0.1:$(PROD_API_PORT) \
-		--web http://127.0.0.1:$(PROD_WEB_PORT) --skip-hints
+		--web http://127.0.0.1:$(PROD_WEB_PORT)
 
-E2E_SKIP_HINTS ?= 1  # 0 once the tutor is up (make prod-tutor-up)
-prod-web-e2e: web/node_modules  ## drive the containerized web UI in headless Chrome (CHROME=... picks the browser; no tutor yet)
+E2E_SKIP_HINTS ?= 0
+prod-web-e2e: web/node_modules  ## drive the containerized web UI in headless Chrome (CHROME=... picks the browser)
 	WEB_URL=http://127.0.0.1:$(PROD_WEB_PORT) E2E_SKIP_HINTS=$(E2E_SKIP_HINTS) E2E_DEMO=$(E2E_DEMO) node web/scripts/e2e.mjs
 
 # The public demo: the teacher view of a simulated class, on its own database (docs/deploy.md).
@@ -233,14 +233,17 @@ prod-demo-down: prod-env  ## stop the demo API (its database is kept)
 	$(PROD) --profile demo stop demo-api
 
 # The AI tutor in the stack (Deploy Step 4): Ollama on the CPU, no GPU, no data leaves the machine.
-prod-tutor-up: prod-env  ## pull the models (first time: 1-5 GB), embed the course notes, start the tutor
+# Without it (prod-up), the tutor worker runs with TUTOR_MODE=teacher: the teacher's hints only.
+# Leave TUTOR_MODE out of .env.prod: these two targets choose it.
+prod-tutor-up: prod-env  ## pull the models (first time: 1-5 GB), embed the course notes, switch hints to the AI tutor
 	$(PROD) --profile tutor up -d --wait ollama
 	$(PROD) --profile tutor --profile tutor-data run --rm tutor-models
 	$(PROD) --profile tutor --profile tutor-data run --rm tutor-notes
-	$(PROD) --profile tutor up -d tutor
+	TUTOR_MODE=ai $(PROD) --profile tutor up -d --wait tutor web
 
-prod-tutor-down: prod-env  ## stop the tutor and Ollama (the downloaded models are kept)
-	$(PROD) --profile tutor stop tutor ollama
+prod-tutor-down: prod-env  ## stop Ollama and switch hints back to the teacher's (the downloaded models are kept)
+	$(PROD) --profile tutor stop ollama
+	TUTOR_MODE=teacher $(PROD) up -d --wait tutor web
 
 prod-e2e-hints:  ## the full end-to-end checks incl. a real hint (needs prod-tutor-up; a CPU hint can take a minute)
 	uv run python scripts/e2e_check.py --api http://127.0.0.1:$(PROD_API_PORT) \

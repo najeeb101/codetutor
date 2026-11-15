@@ -163,17 +163,21 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  # The hint worker. In the default stack TUTOR_MODE is "teacher": no model, every hint is the
+  # teacher's own, at once (docs/deploy.md §9). `make prod-tutor-up` runs it with TUTOR_MODE=ai
+  # next to Ollama; Ollama is optional here, so the teacher mode starts without it.
   tutor:
     <<: *app
-    profiles: ["tutor"]
     command: ["python", "scripts/tutor_worker.py"]
     environment:
       DATABASE_URL: postgresql://codetutor:${POSTGRES_PASSWORD:?set it in .env.prod}@db:5432/codetutor
       OLLAMA_BASE_URL: http://ollama:11434/v1
       TUTOR_MODEL: ${TUTOR_MODEL:-ollama/qwen2.5-coder:1.5b}
+      TUTOR_MODE: ${TUTOR_MODE:-teacher}
     depends_on:
       ollama:
         condition: service_healthy
+        required: false
       migrate:
         condition: service_completed_successfully
 
@@ -191,6 +195,7 @@ services:
     environment:
       CODETUTOR_API_URL: http://api:8000
       CODETUTOR_DEMO_API_URL: http://demo-api:8000
+      TUTOR_MODE: ${TUTOR_MODE:-teacher} # the hint panel says which kind of hint you get
     ports:
       - "127.0.0.1:${WEB_PORT:-3200}:3000"
     depends_on:

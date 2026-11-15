@@ -5,3 +5,9 @@ export const API_URL = process.env.CODETUTOR_API_URL ?? "http://127.0.0.1:8000";
 // The read-only demo API (a simulated class, Deploy Step 2c): its own process, reached through
 // the /demo-api rewrite. Override with CODETUTOR_DEMO_API_URL.
 export const DEMO_API_URL = process.env.CODETUTOR_DEMO_API_URL ?? "http://127.0.0.1:8011";
+
+// How hints are made, the same TUTOR_MODE the tutor worker reads (src/codetutor/settings.py):
+// "teacher" = the problem's own hints, no model. Read on the server at request time.
+export function aiTutorOn(): boolean {
+  return (process.env.TUTOR_MODE ?? "ai") !== "teacher";
+}
