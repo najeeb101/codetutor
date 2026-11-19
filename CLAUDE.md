@@ -639,6 +639,12 @@ Week 1 steps: 0 skeleton → 1 problem format (schema + loader + 3 examples) →
   `e2e_check.py` 11/11, pages and Monaco 200, user `node`, read-only. Browser checks: CI only
   (`e2e.mjs` needs WSL). Found: from Git Bash on Windows the socket's group inside containers is 0
   (WSL's `make` reads 1001); `make` sets `DOCKER_GID` itself, so nothing to change.
+- **Done (2026-11-19): Step 5 rehearsal in a stand-in VM** (privileged Ubuntu 24.04 + systemd +
+  Oracle's iptables rules). `setup-server.sh` twice (idempotent), prod stack with runsc, HTTPS via
+  Caddy, e2e 11/11, spoofed-header PASS, backup 80 KB. **Bug found and fixed:** Caddy failed to
+  start (log file created by root during `caddy validate`); `chown` after validating, +1 test.
+  docs/deploy.md §10. WSL has no network (only `lo`; mirrored mode not attaching), so this ran
+  from the Windows clone; the WSL copy is behind.
 - **Done (2026-11-09): Deploy Step 0** (GitHub + CI; plan approved). Public repo
   https://github.com/najeeb101/codetutor (MIT, topics, description). `check_secrets.py --history`
   (+5 tests; 1 `TODO(najeeb)`: the GitHub-token test), `.github/workflows/ci.yml`, CI badge.

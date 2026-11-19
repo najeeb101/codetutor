@@ -231,8 +231,29 @@ Measured on the laptop 2026-11-19: 84 KB per dump, about 1 s, pruning to `KEEP` 
 dumps are on the VM's own disk: they undo a bad delete or migration, not the loss of the VM.
 Copy one to your computer now and then (`scp`).
 
+### Rehearsal in a stand-in VM (2026-11-19)
+
+Before the real server: a privileged Ubuntu 24.04 container with systemd as PID 1, an `ubuntu`
+sudo user and Oracle's default iptables rules (everything but SSH rejected), amd64, on the laptop.
+Docker inside it needs plain volumes for `/var/lib/docker` and `/var/lib/containerd` (overlay on
+overlay fails; not a problem on a VM). The order above, as written:
+
+| Check | Result |
+|---|---|
+| `setup-server.sh`, first run | exit 0; gVisor's own test printed `kernel 4.19.0-gvisor` |
+| **Bug found** | Caddy did not start: `caddy validate` (as root) created the log file owned by root, mode 600, and the service runs as `caddy`. Fixed: `chown -R caddy:caddy /var/log/caddy` after validating (+1 test) |
+| Second run | exit 0, no duplicate firewall lines; 80 and 443 sit before Oracle's REJECT, live and in `rules.v4` |
+| `make prod-build prod-up` (`SANDBOX_RUNTIME=runsc`) | 79 s build, 47 s start, all healthy |
+| Through Caddy (HTTPS, Caddy's own certificate for a `.localhost` name) | HTTP → 308 to HTTPS; pages, `/api/health`, `/demo`, Monaco 200; HSTS, nosniff, referrer policy; `e2e_check.py` 11/11 |
+| `check-proxy-ip.sh` | PASS (guest 6 → 429) |
+| `backup.sh` | 80 KB dump in `/var/backups/codetutor` |
+
+Caddy logs a warning that `header_up X-Forwarded-For` is unnecessary (its default already
+replaces the header for clients it doesn't trust). Kept on purpose: the line states the intent,
+and a test pins it.
+
 ### Still open
 
-- Not run on a real Oracle VM yet: the setup script, HTTPS and the test above.
+- Not run on a real Oracle VM yet (ARM, real DNS name, Let's Encrypt, Oracle's security list).
 - The tutor CPU benchmark (section 9) was measured on CI runners, not on the Ampere VM.
 - The teacher routes keep one shared token (section 5).
