@@ -137,11 +137,8 @@ Ideas that come up during a week but belong to a later week. Add them here inste
 - **(Week 8 or later) Rasch beyond first tries.** Partial credit (the reward from `grade()`),
   a practice effect per attempt, or Elo for live updates. Worth it only where answers are
   missing in a biased way; on the complete simulated data counting was nearly as good.
-- **(Deploy, if disk or pull time matters) Next.js `output: "standalone"` for the web image.**
-  The image is 996 MB: `next` 203 MB, its platform build 93 MB, `monaco-editor` 105 MB that only
-  the browser needs (it is served from `public/monaco`). Standalone output copies only the
-  files the server really loads (typically a few hundred MB less) and runs with
-  `node server.js`. Measure the size before and after, and check that `make web-e2e` still passes.
+- **Done (2026-11-19): Next.js `output: "standalone"` for the web image.** 998 MB → 416 MB;
+  `e2e_check.py` 11/11 on the new image (docs/deploy.md §6).
 
 - **(Deploy, if grading load grows) A pool of warm gVisor containers.** Every submission starts a
   fresh container (about 215 ms with runc, 315 ms with gVisor on a CI runner). A pool of idle,

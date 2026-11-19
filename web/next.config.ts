@@ -6,6 +6,9 @@ const nextConfig: NextConfig = {
   // `next dev` would write AGENTS.md and CLAUDE.md (instructions for AI coding agents) into
   // web/. Agent instructions for this repo are written by its author, not by a tool.
   agentRules: false,
+  // The production image runs .next/standalone/server.js: only the files the server really
+  // loads, not all of node_modules (deploy/web.Dockerfile, docs/deploy.md §6).
+  output: "standalone",
   // The browser calls /api/... on this server, and Next.js forwards it to the FastAPI server.
   // So the browser talks to one origin only (no CORS), and the API stays on 127.0.0.1.
   async rewrites() {

@@ -633,6 +633,12 @@ Week 1 steps: 0 skeleton → 1 problem format (schema + loader + 3 examples) →
   `deploy/check-proxy-ip.sh` (spoofed-header test), `tests/test_deploy_files.py` (4 tests),
   docs/deploy.md §10. Laptop proofs: Caddyfile valid (caddy 2.10.2); proxy test PASS through Caddy,
   FAIL straight to web; backup 84 KB dump, prune works. `make all` 915 passed. Next: the Oracle VM.
+- **Done (2026-11-19): smaller web image** (Najeeb chose it while the server waits). Next.js
+  `output: "standalone"`, `web.Dockerfile` run stage = standalone + `.next/static` + `public/`,
+  `node server.js`. **998 MB → 416 MB.** Throwaway stack (own project, test passwords, removed):
+  `e2e_check.py` 11/11, pages and Monaco 200, user `node`, read-only. Browser checks: CI only
+  (`e2e.mjs` needs WSL). Found: from Git Bash on Windows the socket's group inside containers is 0
+  (WSL's `make` reads 1001); `make` sets `DOCKER_GID` itself, so nothing to change.
 - **Done (2026-11-09): Deploy Step 0** (GitHub + CI; plan approved). Public repo
   https://github.com/najeeb101/codetutor (MIT, topics, description). `check_secrets.py --history`
   (+5 tests; 1 `TODO(najeeb)`: the GitHub-token test), `.github/workflows/ci.yml`, CI badge.

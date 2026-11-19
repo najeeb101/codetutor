@@ -37,7 +37,7 @@ make prod-down                   # stops it (the database volume is kept)
 
 Open http://127.0.0.1:3200. `make prod-ps` shows the containers, and `make prod-logs` follows
 their logs. Measured on the laptop (2026-11-09): build 2 min 34 s, start 26 s, first grading
-3.6 s. Image sizes: app 421 MB, web 996 MB, sandbox 177 MB.
+3.6 s. Image sizes: app 421 MB, web 996 MB (416 MB since 2026-11-19, section 6), sandbox 177 MB.
 
 ## 3. Design decisions
 
@@ -87,9 +87,12 @@ user-space kernel (section 8).
 
 ## 6. Known limits
 
-- The web image is large (996 MB: `next` 203 MB, its platform build 93 MB, `monaco-editor`
-  105 MB that only the browser needs). Next.js's `output: "standalone"` would shrink it a lot
-  (docs/ideas.md).
+- **The web image: 998 MB → 416 MB** (2026-11-19, `docker images`). Next.js's
+  `output: "standalone"` copies only the files the server loads; the run stage holds that,
+  `.next/static` and `public/` (Monaco for the browser) and starts `node server.js`. Checked on
+  the laptop: a throwaway stack with the new image, `e2e_check.py` 11/11, the pages and
+  `/monaco/vs/loader.js` answer 200, still `node` and read-only. The browser checks
+  (`make prod-web-e2e`) run in CI, not locally (WSL).
 - The tutor container is untested: on 2026-11-09 the laptop's Ollama was not running, and a
   container could not reach `host.docker.internal:11434`. Step 4 decides.
 - `DOCKER_GID` is read from the host's socket by `make`. On Docker Desktop (this laptop) the
