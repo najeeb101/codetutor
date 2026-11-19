@@ -627,6 +627,12 @@ Week 1 steps: 0 skeleton → 1 problem format (schema + loader + 3 examples) →
   report's 'Copies a teacher's hint' share is of the model-written hints shown (1 of 7 = 14%
   for the 1.5B), correct but the header did not say so (fixed 2026-10-31, 321c4ce). Mermaid not rendered
   (no tool here). **Najeeb records the demo video.**
+- **Done (2026-11-19): Deploy Step 5 files** (plan approved; not yet run on a server). `deploy/Caddyfile`
+  (HTTPS, replaces X-Forwarded-For, so `TRUSTED_PROXY_HOPS` stays 1), `deploy/setup-server.sh`
+  (Docker, gVisor, Caddy, iptables 80/443, backup cron), `deploy/backup.sh` (pg_dump, keeps 7),
+  `deploy/check-proxy-ip.sh` (spoofed-header test), `tests/test_deploy_files.py` (4 tests),
+  docs/deploy.md §10. Laptop proofs: Caddyfile valid (caddy 2.10.2); proxy test PASS through Caddy,
+  FAIL straight to web; backup 84 KB dump, prune works. `make all` 915 passed. Next: the Oracle VM.
 - **Done (2026-11-09): Deploy Step 0** (GitHub + CI; plan approved). Public repo
   https://github.com/najeeb101/codetutor (MIT, topics, description). `check_secrets.py --history`
   (+5 tests; 1 `TODO(najeeb)`: the GitHub-token test), `.github/workflows/ci.yml`, CI badge.

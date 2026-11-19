@@ -1,0 +1,35 @@
+# Caddy in front of the whole app on the server (Deploy Step 5, docs/deploy.md §10).
+# deploy/setup-server.sh copies this to /etc/caddy/Caddyfile with the real domain in place of
+# CODETUTOR_DOMAIN. Caddy gets and renews the HTTPS certificate by itself (Let's Encrypt).
+#
+# Only the web container is behind it: Next.js forwards /api/* and /demo-api/* to the APIs
+# inside the Docker network, so nothing else needs a public route.
+
+CODETUTOR_DOMAIN {
+	encode zstd gzip
+
+	# The API refuses bodies over 512 KiB itself (413); this stops bigger ones earlier.
+	request_body {
+		max_size 1MB
+	}
+
+	reverse_proxy 127.0.0.1:3200 {
+		# Replace, never append: whatever X-Forwarded-For the visitor sent is thrown away, so the
+		# API (TRUSTED_PROXY_HOPS=1) sees the address Caddy saw. deploy/check-proxy-ip.sh tests it.
+		header_up X-Forwarded-For {remote_host}
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	log {
+		output file /var/log/caddy/codetutor.log {
+			roll_size 10MiB
+			roll_keep 3
+		}
+	}
+}

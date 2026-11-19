@@ -1,7 +1,8 @@
 # Deploying CodeTutor
 
-Status: **Deploy Step 2 of 6 done** (containers, backend locks, guest login, public demo). The whole app runs in containers, on a laptop or a server, with
-the same images. It is **not ready for strangers yet**; see section 5.
+Status: **Deploy Steps 0 to 4 done; Step 5's files are written and tested on the laptop, not yet
+run on a server** (section 10). The whole app runs in containers, on a laptop or a server, with
+the same images. It is **not live yet**; see section 5.
 
 ## 1. The containers
 
@@ -78,11 +79,11 @@ user-space kernel (section 8).
 | Login | **Done (2a):** guest sessions (random token in an HttpOnly, Secure, SameSite=Lax cookie; only its sha256 stored). Dev login (`X-User-Id`) is off unless `CODETUTOR_DEV_LOGIN=1`, which compose never sets. The web UI uses the guest button + `GET /api/me` (2b); CI drives it in Chrome against the containers |
 | The API's database user could read the hidden tests | **Done (2a):** role `codetutor_api`, enforced by Postgres (`db/roles.py`) |
 | Request size, per-IP and site-wide limits | **Done (2a):** 413 over 512 KiB; 5 guests/hour per IP; 200 guests/hour, 50 queued submissions, 10 waiting hints in total (docs/api.md §4) |
-| The visitor's IP behind the proxies | **Open until Step 5:** Next.js passes a visitor's own `X-Forwarded-For` through (measured), so `TRUSTED_PROXY_HOPS=1` is right only behind Caddy replacing that header. Step 5 must test it with a spoofed header |
+| The visitor's IP behind the proxies | **Fixed in the files (5), to re-check on the server:** Next.js passes a visitor's own `X-Forwarded-For` through (measured), so `deploy/Caddyfile` replaces that header and `TRUSTED_PROXY_HOPS` stays 1. `deploy/check-proxy-ip.sh` (the spoofed-header test) passed through Caddy and failed without it on the laptop, 2026-11-19 (section 10) |
 | The instructor token is one shared secret | **Public demo done (2c):** a separate read-only API on a simulation database, no token needed because no real person is in it. The real teacher routes keep the shared token: fine for one private owner, not for several teachers |
 | Grading containers share the host kernel | **Done (3):** gVisor (`SANDBOX_RUNTIME=runsc`, section 8); proven in CI on amd64 and arm64. The server must set it (Step 5) |
 | No tutor model on the server | **Launch choice (2026-11-15):** teacher hints only (`TUTOR_MODE=teacher`, section 9), and the UI says so. The AI tutor is one command away (`make prod-tutor-up`) |
-| No HTTPS, no server, no backups | Step 5 |
+| No HTTPS, no server, no backups | **Files ready (5):** Caddy with automatic HTTPS, `deploy/setup-server.sh`, nightly `deploy/backup.sh` (section 10). Backups stay on the server's disk; the server itself is not created yet |
 
 ## 6. Known limits
 
@@ -166,3 +167,69 @@ can't answer a question). Measured on the laptop 2026-11-15: a hint in 1.1 s, `m
 
 Leave `TUTOR_MODE` out of `.env.prod`: these targets choose it, so the worker and the UI can't
 disagree. A value other than `ai` or `teacher` stops the worker at start (`settings.tutor_mode`).
+
+## 10. The server (Deploy Step 5)
+
+Oracle Cloud Always Free: an Ampere A1 (ARM) VM with Ubuntu 24.04, a free DuckDNS name, Caddy in
+front. Budget $0. Teacher hints only (section 9).
+
+```
+visitor ──HTTPS──> Caddy (:443, the only open ports are 80/443 and SSH)
+                     └─> web 127.0.0.1:3200 ──> api / demo-api (inside the Docker network)
+```
+
+| File | What it does |
+|---|---|
+| `deploy/Caddyfile` | HTTPS for the domain (Let's Encrypt, renewed by Caddy), proxy to the web container, **replaces** `X-Forwarded-For` with the address Caddy saw, 1 MB body cap, HSTS, rotated access log |
+| `deploy/setup-server.sh` | Run once as root from the clone (safe to run again): Docker from Docker's apt repo, gVisor (`install-gvisor.sh`), Caddy, ports 80/443 in iptables (Oracle's image rejects everything else), the nightly backup cron |
+| `deploy/backup.sh` | `pg_dump` of the real database (custom format) into `/var/backups/codetutor`, checked with `pg_restore --list`, newest 7 kept |
+| `deploy/check-proxy-ip.sh` | The spoofed-header test, run from your own computer |
+
+### Order
+
+1. Oracle console: create the VM (Ampere A1, Ubuntu 24.04, your SSH key). In its subnet's
+   security list, add ingress rules for TCP 80 and 443 from `0.0.0.0/0`.
+2. DuckDNS: make a name, set it to the VM's public IP.
+3. On the VM:
+   ```bash
+   git clone https://github.com/najeeb101/codetutor.git && cd codetutor
+   sudo deploy/setup-server.sh <name>.duckdns.org
+   exit                                   # log in again, so the docker group applies
+   cd codetutor && cp .env.prod.example .env.prod   # fill it in, SANDBOX_RUNTIME=runsc
+   make prod-build prod-up
+   make prod-demo-data prod-demo-up       # optional, the public /demo (~13 min once)
+   ```
+4. From your own computer: open `https://<name>.duckdns.org`, then
+   `deploy/check-proxy-ip.sh https://<name>.duckdns.org` must print PASS.
+5. An uptime check (a free monitor) on `https://<name>.duckdns.org/api/health`.
+
+### The spoofed-header test
+
+The API allows 5 new guests per hour per address. The script asks for 6, each with a different
+made-up `X-Forwarded-For`. If the API ignores the made-up header, one of them gets 429 (PASS);
+if all 6 get in, a visitor can choose their own address (FAIL). Measured on the laptop
+2026-11-19, with the same Caddyfile in a container: through Caddy, guest 6 got 429 (PASS);
+straight to the web container, all 6 got in (FAIL), so the test can tell the two apart.
+
+A PASS alone would also come out if every visitor looked like the same address. So on the
+server, right after the test, start a guest from another network (a phone on mobile data): it
+must get in. If it gets 429 too, the API sees one address for everyone.
+
+### Backups
+
+```bash
+deploy/backup.sh                                        # by hand; cron runs it at 03:30 UTC
+ls -l /var/backups/codetutor                            # the newest 7
+# restore one (stops nothing; replaces the tables' contents):
+docker compose -f compose.prod.yaml --env-file .env.prod exec -T db \
+    pg_restore -U codetutor -d codetutor --clean --if-exists < /var/backups/codetutor/<file>.dump
+```
+Measured on the laptop 2026-11-19: 84 KB per dump, about 1 s, pruning to `KEEP` works. The
+dumps are on the VM's own disk: they undo a bad delete or migration, not the loss of the VM.
+Copy one to your computer now and then (`scp`).
+
+### Still open
+
+- Not run on a real Oracle VM yet: the setup script, HTTPS and the test above.
+- The tutor CPU benchmark (section 9) was measured on CI runners, not on the Ampere VM.
+- The teacher routes keep one shared token (section 5).
