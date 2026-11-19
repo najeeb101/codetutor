@@ -21,7 +21,15 @@ def test_caddy_replaces_the_forwarded_header() -> None:
 
 def test_the_setup_script_fills_in_the_domain_placeholder() -> None:
     assert (DEPLOY / "Caddyfile").read_text().count("CODETUTOR_DOMAIN {") == 1
-    assert "s/CODETUTOR_DOMAIN/$DOMAIN/" in (DEPLOY / "setup-server.sh").read_text()
+    assert "s/^CODETUTOR_DOMAIN {/$DOMAIN {/" in (DEPLOY / "setup-server.sh").read_text()
+
+
+def test_caddy_owns_its_log_folder_after_validating() -> None:
+    script = (DEPLOY / "setup-server.sh").read_text()
+    validate = script.index("caddy validate")
+    assert script.index("chown -R caddy:caddy /var/log/caddy", validate) < script.index(
+        "systemctl reload-or-restart caddy", validate
+    )
 
 
 def test_the_server_scripts_stop_on_errors_and_are_executable() -> None:

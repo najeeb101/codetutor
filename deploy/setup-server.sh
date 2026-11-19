@@ -62,8 +62,11 @@ curl -fsSL https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt \
 apt-get update -q
 apt-get install -y -q caddy
 install -d -o caddy -g caddy /var/log/caddy
-sed "s/CODETUTOR_DOMAIN/$DOMAIN/" "$REPO/deploy/Caddyfile" > /etc/caddy/Caddyfile
+sed "s/^CODETUTOR_DOMAIN {/$DOMAIN {/" "$REPO/deploy/Caddyfile" > /etc/caddy/Caddyfile
 caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+# Validating as root opens the log file and creates it owned by root (mode 600); the service
+# runs as `caddy` and would then fail to start. Found in the stand-in VM test, 2026-11-19.
+chown -R caddy:caddy /var/log/caddy
 systemctl enable caddy
 systemctl reload-or-restart caddy
 
